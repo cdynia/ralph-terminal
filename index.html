@@ -1,0 +1,1046 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Trading by Ralph — Terminal</title>
+<style>
+  :root{
+    color-scheme: dark;
+    --plane:#0d0d0d;
+    --surface:#1a1a19;
+    --surface-2:#212120;
+    --ink:#ffffff;
+    --ink-2:#c3c2b7;
+    --muted:#898781;
+    --grid:#2c2c2a;
+    --line:#383835;
+    --border:rgba(255,255,255,0.10);
+    --good:#0ca30c;
+    --good-bright:#19d119;
+    --bad:#d03b3b;
+    --bad-bright:#f25050;
+    --warn:#fab219;
+    --s-blue:#3987e5;
+    --s-orange:#d95926;
+    --s-aqua:#199e70;
+    --s-yellow:#c98500;
+    --mono:"SFMono-Regular",Consolas,"Liberation Mono",Menlo,monospace;
+    --sans:system-ui,-apple-system,"Segoe UI",sans-serif;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{background:var(--plane);color:var(--ink);font-family:var(--sans);-webkit-font-smoothing:antialiased}
+  body{padding:0 0 48px}
+  a{color:var(--s-blue);text-decoration:none}
+  .tabular{font-variant-numeric:tabular-nums}
+  .mono{font-family:var(--mono)}
+
+  /* ---------- Market strip ---------- */
+  .strip{background:#000;border-bottom:1px solid var(--border);display:flex;flex-wrap:wrap;gap:0;align-items:stretch}
+  .strip .item{display:flex;align-items:baseline;gap:8px;padding:11px 20px;font-family:var(--mono);font-size:13px;border-right:1px solid rgba(255,255,255,.06)}
+  .strip .sym{color:var(--ink-2);font-weight:600}
+  .strip .px{color:var(--ink)}
+  .up{color:var(--good-bright)}
+  .down{color:var(--bad-bright)}
+
+  /* ---------- Header ---------- */
+  header{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:18px 28px;border-bottom:1px solid var(--border);flex-wrap:wrap}
+  .brand{display:flex;align-items:center;gap:14px}
+  .logo{width:40px;height:40px;border-radius:9px;background:linear-gradient(135deg,var(--s-blue),var(--s-aqua));display:grid;place-items:center;font-size:20px}
+  .brand h1{font-size:17px;font-weight:650;letter-spacing:.2px}
+  .brand .sub{font-size:11.5px;color:var(--muted);letter-spacing:.3px;margin-top:3px}
+  .head-right{display:flex;align-items:center;gap:16px;flex-wrap:wrap}
+  .clock{font-family:var(--mono);font-size:13px;color:var(--ink-2);text-align:right}
+  .clock .d{color:var(--muted);font-size:11px;margin-top:2px}
+  .badge{display:inline-flex;align-items:center;gap:7px;padding:6px 13px;border-radius:999px;font-size:12px;font-weight:600;letter-spacing:.3px}
+  .badge-paper{background:rgba(250,178,25,.12);color:var(--warn);border:1px solid rgba(250,178,25,.35)}
+  .badge-mode{background:rgba(57,135,229,.10);color:var(--s-blue);border:1px solid rgba(57,135,229,.30)}
+  .badge-realmoney{background:rgba(208,59,59,.16);color:var(--bad-bright);border:1px solid rgba(242,80,80,.55);animation:pulseRed 1.8s infinite}
+  @keyframes pulseRed{0%,100%{box-shadow:0 0 0 0 rgba(242,80,80,.35)}50%{box-shadow:0 0 0 7px rgba(242,80,80,0)}}
+  .note-danger{color:var(--bad-bright)!important}
+  .live-phrase{margin:0 0 16px}
+  .live-phrase label{display:block;font-size:11px;color:var(--bad-bright);letter-spacing:.4px;text-transform:uppercase;margin-bottom:6px;font-weight:700}
+  .live-phrase input{width:100%;background:var(--plane);border:1px solid rgba(242,80,80,.5);color:var(--ink);font-family:var(--mono);font-size:14px;padding:9px 11px;border-radius:8px}
+  .live-phrase input:focus{outline:none;border-color:var(--bad-bright)}
+
+  /* ---------- Status note ---------- */
+  .note{background:var(--surface-2);border-bottom:1px solid var(--border);padding:10px 28px;font-size:12.5px;color:var(--ink-2);display:flex;align-items:center;gap:9px}
+  .note b{color:var(--ink)}
+  .note .k{color:var(--warn);font-weight:600}
+
+  /* ---------- Layout ---------- */
+  .wrap{max-width:1280px;margin:0 auto;padding:24px 28px}
+  .grid{display:grid;gap:16px}
+  .cols-4{grid-template-columns:repeat(4,1fr)}
+  .cols-3{grid-template-columns:repeat(3,1fr)}
+  .cols-2{grid-template-columns:1.7fr 1fr}
+  @media(max-width:900px){.cols-4{grid-template-columns:repeat(2,1fr)}.cols-3{grid-template-columns:1fr}.cols-2{grid-template-columns:1fr}}
+
+  .card{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:18px}
+  .card h2{font-size:12px;font-weight:600;letter-spacing:.6px;text-transform:uppercase;color:var(--muted);margin-bottom:14px;display:flex;align-items:center;justify-content:space-between}
+  .card h2 .tag{font-size:10px;color:var(--muted);font-weight:500;letter-spacing:.2px;text-transform:none}
+
+  /* ---------- Stat tiles ---------- */
+  .tile{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:16px 18px}
+  .tile .label{font-size:11px;color:var(--muted);letter-spacing:.5px;text-transform:uppercase}
+  .tile .val{font-size:26px;font-weight:650;margin-top:8px;letter-spacing:-.4px}
+  .tile .delta{font-size:13px;margin-top:4px;font-family:var(--mono)}
+  .tile .meta{font-size:11.5px;color:var(--muted);margin-top:4px}
+
+  /* ---------- Positions table ---------- */
+  table{width:100%;border-collapse:collapse;font-size:13px}
+  th{text-align:right;font-size:10.5px;letter-spacing:.5px;text-transform:uppercase;color:var(--muted);font-weight:600;padding:0 10px 10px;border-bottom:1px solid var(--border)}
+  th:first-child,td:first-child{text-align:left}
+  td{padding:13px 10px;border-bottom:1px solid rgba(255,255,255,.05);text-align:right;font-family:var(--mono)}
+  tr:last-child td{border-bottom:none}
+  .sym{font-weight:700;font-family:var(--sans);font-size:14px}
+  .side{display:inline-block;font-size:10px;font-weight:700;letter-spacing:.5px;padding:2px 7px;border-radius:5px;background:rgba(25,158,112,.15);color:var(--s-aqua);margin-left:8px;vertical-align:middle;font-family:var(--sans)}
+  .prog{position:relative;height:6px;background:var(--grid);border-radius:3px;margin-top:7px;min-width:120px}
+  .prog .fill{position:absolute;top:0;bottom:0;left:0;border-radius:3px;background:var(--s-blue)}
+  .prog .mk{position:absolute;top:-3px;width:2px;height:12px;background:var(--ink);border-radius:1px}
+  .proglabels{display:flex;justify-content:space-between;font-size:9.5px;color:var(--muted);margin-top:4px;font-family:var(--mono)}
+
+  /* ---------- Donut + gauge ---------- */
+  .donut-wrap{display:flex;align-items:center;gap:20px;flex-wrap:wrap}
+  .legend{display:flex;flex-direction:column;gap:9px;font-size:12.5px;flex:1;min-width:160px}
+  .legend .row{display:flex;align-items:center;gap:9px}
+  .legend .sw{width:11px;height:11px;border-radius:3px;flex:none}
+  .legend .nm{color:var(--ink-2)}
+  .legend .amt{margin-left:auto;font-family:var(--mono);color:var(--ink);padding-left:16px}
+
+  .gauge-val{text-align:center;margin-top:-6px}
+  .gauge-val .big{font-size:24px;font-weight:700;font-family:var(--mono)}
+  .gauge-val .cap{font-size:11px;color:var(--muted);margin-top:3px;line-height:1.5}
+
+  /* ---------- Rails / verdict ---------- */
+  .rails{list-style:none;display:flex;flex-direction:column;gap:11px}
+  .rails li{display:flex;align-items:center;gap:10px;font-size:13px;color:var(--ink-2)}
+  .rails .ok{color:var(--good)}
+  .rails b{color:var(--ink);font-weight:600}
+  .verdict{font-size:13.5px;line-height:1.65;color:var(--ink-2)}
+  .verdict b{color:var(--ink)}
+  .verdict .warn-txt{color:var(--warn)}
+
+  .foot{max-width:1280px;margin:20px auto 0;padding:0 28px;font-size:11.5px;color:var(--muted);line-height:1.6}
+  .foot .mono{color:var(--ink-2)}
+
+  .section-title{font-size:13px;font-weight:600;color:var(--ink-2);letter-spacing:.4px;margin:28px 2px 2px;text-transform:uppercase}
+  .section-title:first-of-type{margin-top:4px}
+
+  /* ---------- Buttons ---------- */
+  .btn{font-family:var(--sans);font-size:12px;font-weight:600;border:1px solid var(--border);background:var(--surface-2);color:var(--ink-2);padding:6px 12px;border-radius:8px;cursor:pointer;transition:all .15s}
+  .btn:hover:not(:disabled){border-color:var(--s-blue);color:var(--ink)}
+  .btn:disabled{opacity:.4;cursor:not-allowed}
+  .btn-go{background:var(--s-aqua);color:#fff;border-color:var(--s-aqua)}
+  .btn-go:hover:not(:disabled){background:#1fb182;border-color:#1fb182;color:#fff}
+  .btn-row{padding:5px 11px;font-size:11.5px}
+  .btn-danger{background:var(--bad);border-color:var(--bad);color:#fff}
+  .btn-danger:hover:not(:disabled){background:#e14a4a;border-color:#e14a4a}
+
+  /* ---------- Modal ---------- */
+  .overlay{position:fixed;inset:0;background:rgba(0,0,0,.7);display:none;align-items:center;justify-content:center;z-index:50;padding:20px}
+  .overlay.show{display:flex}
+  .modal{background:var(--surface);border:1px solid var(--border);border-radius:16px;max-width:460px;width:100%;padding:22px;box-shadow:0 20px 60px rgba(0,0,0,.6)}
+  .modal h3{font-size:16px;font-weight:650;margin-bottom:4px}
+  .modal .msub{font-size:12px;color:var(--muted);margin-bottom:16px}
+  .ticket{background:var(--plane);border:1px solid var(--border);border-radius:10px;padding:14px;margin-bottom:16px;font-family:var(--mono);font-size:12.5px}
+  .ticket .tr{display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid rgba(255,255,255,.05)}
+  .ticket .tr:last-child{border-bottom:none}
+  .ticket .tk{color:var(--muted)}
+  .ticket .tv{color:var(--ink)}
+  .modal-note{font-size:11.5px;color:var(--warn);background:rgba(250,178,25,.08);border:1px solid rgba(250,178,25,.2);border-radius:8px;padding:9px 11px;margin-bottom:16px;line-height:1.5}
+  .modal-actions{display:flex;gap:10px;justify-content:flex-end}
+  .modal-result{font-size:12.5px;line-height:1.6;margin-bottom:16px}
+  .modal-result.ok{color:var(--good-bright)}
+  .modal-result.err{color:var(--bad-bright)}
+
+  /* connected state */
+  /* ---------- Simple / Pro view toggle ---------- */
+  .viewtoggle{display:inline-flex;background:var(--surface-2);border:1px solid var(--border);border-radius:999px;padding:3px}
+  .vt-btn{font-family:var(--sans);font-size:12px;font-weight:600;border:none;background:transparent;color:var(--muted);padding:6px 13px;border-radius:999px;cursor:pointer;transition:all .15s}
+  .vt-btn.on{background:var(--s-aqua);color:#fff}
+  .vt-btn:hover:not(.on){color:var(--ink)}
+
+  /* visibility helpers driven by body.mode-* */
+  .simple-only{display:none}
+  body.mode-simple .simple-only{display:inline}
+  body.mode-simple .pro-only{display:none}
+  .simple-block{display:none}
+  body.mode-simple .simple-block{display:block}
+
+  /* Simple-mode explainer */
+  .explain{background:linear-gradient(135deg,rgba(57,135,229,.10),rgba(25,158,112,.08));border:1px solid var(--border);border-radius:14px;padding:16px 18px;margin:18px 0 4px;font-size:13.5px;line-height:1.6;color:var(--ink-2)}
+  .explain b{color:var(--ink)}
+  .explain .hd{font-size:14px;font-weight:650;color:var(--ink);margin-bottom:6px;display:flex;align-items:center;gap:8px}
+  .help{font-size:12px;color:var(--muted);font-weight:400;margin-top:6px;line-height:1.5;text-transform:none;letter-spacing:0}
+
+  /* ---------- Glossary tooltip ---------- */
+  .gl{border-bottom:1px dotted var(--muted);cursor:help}
+
+  /* ---------- Position-size calculator ---------- */
+  .calc-row{display:grid;grid-template-columns:1fr 1fr;gap:12px 14px}
+  .calc-field label{display:block;font-size:11px;color:var(--muted);letter-spacing:.3px;text-transform:uppercase;margin-bottom:5px}
+  .calc-field input{width:100%;background:var(--plane);border:1px solid var(--border);color:var(--ink);font-family:var(--mono);font-size:14px;padding:8px 10px;border-radius:8px}
+  .calc-field input:focus{outline:none;border-color:var(--s-blue)}
+  .calc-out{margin-top:16px;background:var(--plane);border:1px solid var(--border);border-radius:10px;padding:14px 16px}
+  .calc-out .r{display:flex;justify-content:space-between;padding:6px 0;font-family:var(--mono);font-size:13px;border-bottom:1px solid rgba(255,255,255,.05)}
+  .calc-out .r:last-child{border-bottom:none}
+  .calc-out .rk{color:var(--muted)}
+  .calc-out .rv{color:var(--ink);font-weight:600}
+  .calc-verdict{margin-top:12px;font-size:12.5px;padding:9px 12px;border-radius:8px;line-height:1.5}
+  .calc-verdict.ok{background:rgba(12,163,12,.10);color:var(--good-bright);border:1px solid rgba(12,163,12,.25)}
+  .calc-verdict.bad{background:rgba(208,59,59,.10);color:var(--bad-bright);border:1px solid rgba(208,59,59,.25)}
+
+  /* ---------- Track-record card ---------- */
+  .tr-stat{display:flex;justify-content:space-between;align-items:baseline;padding:9px 0;border-bottom:1px solid rgba(255,255,255,.05);font-size:13.5px}
+  .tr-stat:last-child{border-bottom:none}
+  .tr-stat .k{color:var(--ink-2)}
+  .tr-stat .v{font-family:var(--mono);font-weight:600}
+  .status-chip{display:inline-block;font-size:11px;font-weight:700;letter-spacing:.4px;padding:3px 9px;border-radius:6px;background:rgba(250,178,25,.14);color:var(--warn);border:1px solid rgba(250,178,25,.3)}
+
+  /* ---------- Trade journal ---------- */
+  .cols-auto{grid-template-columns:repeat(auto-fit,minmax(140px,1fr))}
+  .jlog-form{background:var(--plane);border:1px solid var(--border);border-radius:12px;padding:16px;margin-bottom:16px}
+  .jlog-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:12px}
+  .jlog-grid .f label{display:block;font-size:10.5px;color:var(--muted);text-transform:uppercase;letter-spacing:.3px;margin-bottom:4px}
+  .jlog-grid .f input,.jlog-grid .f select{width:100%;background:var(--surface);border:1px solid var(--border);color:var(--ink);font-family:var(--mono);font-size:13px;padding:7px 9px;border-radius:7px}
+  .jlog-grid .f input:focus,.jlog-grid .f select:focus{outline:none;border-color:var(--s-blue)}
+  .jlog-actions{display:flex;gap:10px;margin-top:14px;align-items:center}
+  .jlog-pnl{font-family:var(--mono);font-size:13px;color:var(--muted);margin-left:auto}
+  .jempty{text-align:center;color:var(--muted);font-size:13px;padding:26px 10px;line-height:1.6}
+  .by-setup .bs{margin-bottom:12px}
+  .by-setup .bs:last-child{margin-bottom:0}
+  .by-setup .bshead{display:flex;justify-content:space-between;font-size:12.5px;margin-bottom:5px}
+  .by-setup .bsname{color:var(--ink);font-weight:600}
+  .by-setup .bsnet{font-family:var(--mono)}
+  .by-setup .bsbar{height:6px;background:var(--grid);border-radius:3px;overflow:hidden;display:flex}
+  .by-setup .bswin{background:var(--good)}
+  .by-setup .bsmeta{font-size:10.5px;color:var(--muted);margin-top:3px;font-family:var(--mono)}
+  .del-btn{background:none;border:none;color:var(--muted);cursor:pointer;font-size:14px;padding:2px 6px;border-radius:5px}
+  .del-btn:hover{color:var(--bad-bright);background:rgba(208,59,59,.1)}
+
+  .badge-live{background:rgba(12,163,12,.14);color:var(--good-bright);border:1px solid rgba(12,163,12,.4)}
+  .dot-live{width:8px;height:8px;border-radius:50%;background:var(--good-bright);box-shadow:0 0 0 0 var(--good-bright);animation:pulseLive 2s infinite}
+  @keyframes pulseLive{0%{box-shadow:0 0 0 0 rgba(25,209,25,.5)}70%{box-shadow:0 0 0 7px rgba(25,209,25,0)}100%{box-shadow:0 0 0 0 rgba(25,209,25,0)}}
+  .note-ok{color:var(--good-bright)!important}
+</style>
+</head>
+<body>
+
+<!-- Market strip (static reference) -->
+<div class="strip" id="strip"></div>
+
+<header>
+  <div class="brand">
+    <div class="logo">📈</div>
+    <div>
+      <h1>TRADING <span style="color:var(--s-aqua)">BY RALPH</span></h1>
+      <div class="sub">Colton Dynia &amp; Logan Perak · US Equities &amp; ETFs · Paper Account</div>
+    </div>
+  </div>
+  <div class="head-right">
+    <div class="viewtoggle" id="viewToggle" title="Switch between plain-English and pro views">
+      <button data-mode="simple" class="vt-btn">🙂 Simple</button>
+      <button data-mode="pro" class="vt-btn">📊 Pro</button>
+    </div>
+    <span class="badge badge-paper" id="moneyBadge">PAPER · PRACTICE MONEY</span>
+    <span class="badge badge-mode" id="modeBadge">RESEARCH MODE</span>
+    <button class="btn btn-danger" id="killBtn" style="display:none" title="Cancel all open orders, sell every position, and stop trading for the rest of the day">⛔ KILL SWITCH</button>
+    <div class="clock"><div id="clk">—</div><div class="d" id="clkd">—</div></div>
+  </div>
+</header>
+
+<div class="note" id="noteBar">
+  <span id="noteText">📋 <b>Queued plan</b> — showing the Oct 5, 2026 trade plan at reference closes. No broker connected, so these are <b>planned orders, not fills</b>. Add Alpaca paper keys to <span class="k">Config/.env</span> for live paper P&amp;L.</span>
+</div>
+
+<div class="wrap">
+
+  <!-- Simple-mode intro -->
+  <div class="explain simple-block">
+    <div class="hd">👋 What is this?</div>
+    This is <b>Ralph</b>, a practice trading bot for Colton &amp; Logan. It uses <b>pretend money</b> (never real dollars) to learn how buying and selling stocks works. Below you'll see how the market did today, the trades Ralph is thinking about, and the safety rules that stop it from losing too much. <b>Nothing happens unless you click a button and confirm it.</b>
+  </div>
+
+  <!-- Market read -->
+  <div class="section-title">
+    <span class="pro-only">Market Read — Mon, Oct 5 2026 · Risk-On</span>
+    <span class="simple-only">How the market did today — Mon, Oct 5 2026</span>
+    <div class="help simple-block">Green = prices went up, red = down. A good day overall (most things went up).</div>
+  </div>
+  <div class="grid cols-4" id="indexTiles"></div>
+
+  <!-- Portfolio summary -->
+  <div class="section-title">
+    <span class="pro-only">Paper Portfolio</span>
+    <span class="simple-only">Ralph's practice money</span>
+  </div>
+  <div class="grid cols-4">
+    <div class="tile"><div class="label"><span class="pro-only">Account Equity</span><span class="simple-only">Total practice money</span></div><div class="val tabular">$100,000</div><div class="meta"><span class="pro-only">Alpaca paper default</span><span class="simple-only">pretend starting cash</span></div></div>
+    <div class="tile"><div class="label"><span class="pro-only">Capital Deployed</span><span class="simple-only">Money in trades</span></div><div class="val tabular">$34,257</div><div class="meta"><span class="pro-only">34% · cash buffer kept</span><span class="simple-only">34% used · rest kept safe</span></div></div>
+    <div class="tile"><div class="label"><span class="pro-only">Unrealized P&amp;L</span><span class="simple-only">Profit / loss so far</span></div><div class="val tabular" style="color:var(--muted)">$0.00</div><div class="meta"><span class="pro-only">awaiting fills</span><span class="simple-only">nothing bought yet</span></div></div>
+    <div class="tile"><div class="label"><span class="pro-only">Open Positions</span><span class="simple-only">Active trades</span></div><div class="val tabular">4 <span style="font-size:15px;color:var(--muted)">/ 5 max</span></div><div class="meta"><span class="pro-only">+1 watch-only (EWZ)</span><span class="simple-only">+1 just watching</span></div></div>
+  </div>
+
+  <!-- Positions + allocation -->
+  <div class="grid cols-2" style="margin-top:16px">
+    <div class="card">
+      <h2><span><span class="pro-only">Queued Positions</span><span class="simple-only">Trades Ralph wants to make</span></span> <span style="display:flex;gap:10px;align-items:center"><span class="tag pro-only" id="posTag">LONG · reference: Oct 5 close</span><button class="btn btn-go" id="placeAll" disabled title="Connect paper keys to enable"><span class="pro-only">Place all (4)</span><span class="simple-only">Buy all 4</span></button></span></h2>
+      <table>
+        <thead>
+          <tr>
+            <th><span class="pro-only">Symbol</span><span class="simple-only">Stock</span></th>
+            <th><span class="pro-only">Qty</span><span class="simple-only">Shares</span></th>
+            <th><span class="pro-only">Entry</span><span class="simple-only">Buy ~</span></th>
+            <th><span class="pro-only">Stop</span><span class="simple-only">Sell if falls to</span></th>
+            <th><span class="pro-only">Target</span><span class="simple-only">Sell if rises to</span></th>
+            <th><span class="pro-only">R:R</span><span class="simple-only">Reward vs risk</span></th>
+            <th><span class="pro-only">Risk</span><span class="simple-only">Most you'd lose</span></th>
+            <th><span class="pro-only">Stop → Target</span><span class="simple-only">Danger ↔ goal</span></th>
+            <th><span class="pro-only">Action</span><span class="simple-only">Trade</span></th>
+          </tr>
+        </thead>
+        <tbody id="posBody"></tbody>
+      </table>
+    </div>
+    <div class="card">
+      <h2><span class="pro-only">Allocation</span><span class="simple-only">Where the money is</span></h2>
+      <div class="donut-wrap">
+        <svg width="140" height="140" viewBox="0 0 140 140" id="donut"></svg>
+        <div class="legend" id="donutLegend"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Learn & plan: calculator + track record -->
+  <div class="section-title">
+    <span class="pro-only">Plan a Trade · Track Record</span>
+    <span class="simple-only">Try it yourself · How Ralph's doing</span>
+  </div>
+  <div class="grid cols-2" style="margin-top:4px">
+    <div class="card">
+      <h2><span class="pro-only">Position-Size Calculator</span><span class="simple-only">How many shares should I buy?</span></h2>
+      <div class="help simple-block" style="margin:-8px 0 14px">The #1 skill in trading isn't picking winners — it's <b>not betting too much</b>. Type in a few numbers and Ralph tells you a safe amount.</div>
+      <div class="calc-row">
+        <div class="calc-field"><label><span class="pro-only">Account equity</span><span class="simple-only">Money you have</span> ($)</label><input id="cEquity" type="number" value="100000"></div>
+        <div class="calc-field"><label><span class="gl" title="The share of your whole account you're willing to lose if this one trade hits its stop. Pros usually risk 0.5–1%.">Risk per trade</span> (%)</label><input id="cRisk" type="number" value="1" step="0.1"></div>
+        <div class="calc-field"><label><span class="pro-only">Entry price</span><span class="simple-only">Buy price</span> ($)</label><input id="cEntry" type="number" value="238.90" step="0.01"></div>
+        <div class="calc-field"><label><span class="gl" title="The price where you'll automatically sell to cap your loss. Below your entry for a buy.">Stop price</span> ($)</label><input id="cStop" type="number" value="229.00" step="0.01"></div>
+      </div>
+      <div class="calc-out" id="calcOut"></div>
+      <div class="calc-verdict" id="calcVerdict"></div>
+    </div>
+    <div class="card">
+      <h2><span class="pro-only">Paper Track Record</span><span class="simple-only">How Ralph's doing so far</span></h2>
+      <div class="help simple-block" style="margin:-8px 0 14px">A strategy only earns trust by proving itself over many trades. Here's the honest scoreboard.</div>
+      <div class="tr-stat"><span class="k"><span class="pro-only">Strategy status</span><span class="simple-only">Is it proven yet?</span></span><span class="v" id="trStatus"><span class="status-chip">EXPERIMENTAL</span></span></div>
+      <div class="tr-stat"><span class="k"><span class="pro-only">Paper trades logged</span><span class="simple-only">Trades done</span></span><span class="v" id="trCount">0</span></div>
+      <div class="tr-stat"><span class="k"><span class="gl" title="Percent of trades that made money. On its own it means little without average win vs loss size.">Win rate</span></span><span class="v" id="trWin" style="color:var(--muted)">— needs ≥20 trades</span></div>
+      <div class="tr-stat"><span class="k"><span class="gl" title="Average profit per trade after wins and losses. Positive = the strategy has an edge.">Expectancy</span></span><span class="v" id="trExp" style="color:var(--muted)">—</span></div>
+      <div class="tr-stat"><span class="k"><span class="gl" title="The biggest drop from a peak to a low in your account value. Measures how much pain a strategy puts you through.">Max drawdown</span></span><span class="v" id="trDD" style="color:var(--muted)">—</span></div>
+      <div class="help" style="margin-top:14px;color:var(--ink-2)">Ralph won't claim an edge until there's a real track record. Start placing paper trades and this fills in — then, and only then, does it make sense to talk about real money.</div>
+    </div>
+  </div>
+
+  <!-- Risk + rails + verdict -->
+  <div class="grid cols-3" style="margin-top:16px">
+    <div class="card">
+      <h2><span class="pro-only">Daily Risk Budget</span><span class="simple-only">Today's safety limit</span></h2>
+      <svg width="100%" height="120" viewBox="0 0 240 120" id="gauge"></svg>
+      <div class="gauge-val">
+        <div class="big" id="riskNum">$1,411</div>
+        <div class="cap"><span class="pro-only">max risk if every stop hits · <b style="color:var(--ink-2)">1.4%</b> of equity</span><span class="simple-only">the most Ralph could lose today · <b style="color:var(--ink-2)">1.4%</b> of the money</span></div>
+        <div class="cap"><span class="pro-only">cutoff: <b style="color:var(--bad)">$3,000 (3%)</b> daily max loss</span><span class="simple-only">hard stop: <b style="color:var(--bad)">$3,000</b> — Ralph quits for the day if it loses this much</span></div>
+      </div>
+    </div>
+    <div class="card">
+      <h2><span class="pro-only">Safety Rails</span><span class="simple-only">Built-in safety rules</span></h2>
+      <ul class="rails">
+        <li><span class="ok">✓</span><span><span class="pro-only"><b>Max position</b> — 10% equity (CLF held to 5%)</span><span class="simple-only"><b>Never bet big</b> — max 10% of the money on one stock</span></span></li>
+        <li><span class="ok">✓</span><span><span class="pro-only"><b>Per-trade risk</b> — ≤1% equity (all ≤0.4%)</span><span class="simple-only"><b>Small risk per trade</b> — under 1% at stake each</span></span></li>
+        <li><span class="ok">✓</span><span><span class="pro-only"><b>Daily max-loss</b> — 3% cutoff, then stop</span><span class="simple-only"><b>Knows when to quit</b> — stops for the day after a 3% loss</span></span></li>
+        <li><span class="ok">✓</span><span><span class="pro-only"><b>Max open</b> — 5 positions</span><span class="simple-only"><b>Stays focused</b> — 5 trades at once, max</span></span></li>
+        <li><span class="ok">✓</span><span><span class="pro-only"><b>Universe</b> — liquid US stocks/ETFs only</span><span class="simple-only"><b>Sticks to big, easy-to-sell stocks</b></span></span></li>
+      </ul>
+    </div>
+    <div class="card">
+      <h2><span class="pro-only">Honest Verdict</span><span class="simple-only">Straight talk</span></h2>
+      <div class="verdict pro-only">
+        Clean risk-on tape, but <b>three of four names (NVDA, TSM, CLF) are bought <span class="warn-txt">after</span> a strong up day</b> — that's chasing extension, the #1 way day traders bleed. Stops respect it. The read is real; <b>the edge is unproven</b> until a strategy file defines these rules <em>before</em> the fact and a backtest confirms them.
+      </div>
+      <div class="verdict simple-only">
+        It was a good day in the market, but <b>3 of these 4 stocks already jumped up a lot today</b> — buying after a big jump is risky, like catching a ball that's already falling. The safety rules keep the danger small. Honestly? <b>This is Ralph practicing, not a proven money-maker.</b> That's the whole point — learn first, with pretend money.
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ TRADE JOURNAL ============ -->
+  <div class="section-title">
+    <span class="pro-only">Trade Journal</span>
+    <span class="simple-only">Trade diary — what actually happened</span>
+    <div class="help simple-block">Write down every finished trade. Over time this tells you the truth: is Ralph actually any good, or just getting lucky? Numbers don't lie.</div>
+  </div>
+
+  <!-- Analytics -->
+  <div class="grid cols-auto" id="jStats" style="margin-top:4px"></div>
+
+  <!-- Equity curve + by setup -->
+  <div class="grid cols-2" style="margin-top:16px">
+    <div class="card">
+      <h2><span class="pro-only">Equity Curve <span class="tag">cumulative P&amp;L, logged trades</span></span><span class="simple-only">Money over time</span></h2>
+      <div id="jCurveWrap"><svg width="100%" height="180" viewBox="0 0 600 180" id="jCurve" preserveAspectRatio="none"></svg></div>
+    </div>
+    <div class="card">
+      <h2><span class="pro-only">By Setup</span><span class="simple-only">Which ideas work?</span></h2>
+      <div class="by-setup" id="jBySetup"></div>
+    </div>
+  </div>
+
+  <!-- Log + table -->
+  <div class="card" style="margin-top:16px">
+    <h2>
+      <span><span class="pro-only">Logged Trades</span><span class="simple-only">Every trade so far</span></span>
+      <button class="btn btn-go" id="jToggleForm"><span class="pro-only">＋ Log a trade</span><span class="simple-only">＋ Add a trade</span></button>
+    </h2>
+
+    <div class="jlog-form" id="jForm" style="display:none">
+      <div class="jlog-grid">
+        <div class="f"><label>Date</label><input id="jDate" type="date"></div>
+        <div class="f"><label><span class="pro-only">Symbol</span><span class="simple-only">Stock</span></label><input id="jSym" type="text" placeholder="NVDA" maxlength="6"></div>
+        <div class="f"><label><span class="pro-only">Side</span><span class="simple-only">Bought/Shorted</span></label><select id="jSide"><option value="long">Long (bought)</option><option value="short">Short (sold)</option></select></div>
+        <div class="f"><label><span class="pro-only">Qty</span><span class="simple-only">Shares</span></label><input id="jQty" type="number" placeholder="10"></div>
+        <div class="f"><label><span class="pro-only">Entry</span><span class="simple-only">Buy price</span></label><input id="jEntry" type="number" step="0.01" placeholder="238.90"></div>
+        <div class="f"><label><span class="pro-only">Exit</span><span class="simple-only">Sell price</span></label><input id="jExit" type="number" step="0.01" placeholder="252.00"></div>
+        <div class="f"><label><span class="gl" title="A short tag for the kind of trade — e.g. breakout, pullback, earnings, gap. Lets you see which ideas actually work.">Setup</span></label><input id="jSetup" type="text" placeholder="breakout"></div>
+        <div class="f" style="grid-column:1/-1"><label>Notes <span style="text-transform:none;color:var(--muted)">(what you learned)</span></label><input id="jNotes" type="text" placeholder="chased it, entry too late"></div>
+      </div>
+      <div class="jlog-actions">
+        <button class="btn btn-go" id="jSave">Save trade</button>
+        <button class="btn" id="jCancel">Cancel</button>
+        <span class="jlog-pnl" id="jPnlPreview">P&amp;L: —</span>
+      </div>
+    </div>
+
+    <div id="jTableWrap"></div>
+  </div>
+
+</div>
+
+<!-- Confirmation modal -->
+<div class="overlay" id="overlay">
+  <div class="modal">
+    <h3 id="mTitle">Confirm paper order</h3>
+    <div class="msub" id="mSub">Review the ticket. Nothing is sent until you confirm.</div>
+    <div id="mBody"></div>
+    <div class="modal-note" id="mNote">⚠️ This submits a <b>bracket order on the Alpaca PAPER account</b> (simulated money). Entry + stop-loss + take-profit will be live until filled or cancelled.</div>
+    <div class="modal-result" id="mResult" style="display:none"></div>
+    <div class="modal-actions">
+      <button class="btn" id="mCancel">Cancel</button>
+      <button class="btn btn-go" id="mConfirm">Confirm &amp; place</button>
+    </div>
+  </div>
+</div>
+
+<div class="foot">
+  <b style="color:var(--ink-2)">Paper by default. Real-money mode exists behind a triple lock in <span class="mono">Config/.env</span> plus per-order typed confirmation, and every order passes the server-side risk engine (<span class="mono">Config/risk.json</span>).</b>
+  Day trading is not easy income; most active day traders lose money over time. Every order attempt is audited to
+  <span class="mono">Daily-Logs/orders.jsonl</span>. Queued plan reference: <span class="mono">Daily-Logs/2026-10-05.md</span>.
+</div>
+
+<script>
+/* ---------------- Real data from Daily-Logs/2026-10-05.md ---------------- */
+const positions = [
+  {sym:"NVDA", qty:41,  entry:238.90, stop:229.00, target:258.00, rr:1.9, risk:406, hex:"#3987e5"},
+  {sym:"TSM",  qty:20,  entry:485.80, stop:466.00, target:520.00, rr:1.7, risk:396, hex:"#d95926"},
+  {sym:"CLF",  qty:410, entry:12.20,  stop:11.40,  target:14.00,  rr:2.2, risk:328, hex:"#199e70"},
+  {sym:"QQQ",  qty:13,  entry:749.58, stop:728.00, target:780.00, rr:1.4, risk:281, hex:"#c98500"},
+];
+const indexes = [
+  {sym:"SPY", label:"S&P 500 ETF",     px:769.64, chg:0.74},
+  {sym:"QQQ", label:"Nasdaq 100 ETF",  px:749.58, chg:1.02},
+  {sym:"DIA", label:"Dow ETF",         px:512.68, chg:0.18},
+  {sym:"EWZ", label:"Brazil · watch",  px:38.40,  chg:12.0},
+];
+
+const fmt = (n,d=2)=>n.toLocaleString("en-US",{minimumFractionDigits:d,maximumFractionDigits:d});
+
+/* ---------------- Market strip ---------------- */
+function buildStrip(){
+  document.getElementById("strip").innerHTML = indexes.map(i=>{
+    const cls=i.chg>=0?"up":"down";const arr=i.chg>=0?"▲":"▼";
+    return `<div class="item"><span class="sym">${i.sym}</span><span class="px">${fmt(i.px)}</span><span class="${cls}">${arr}${fmt(Math.abs(i.chg))}%</span></div>`;
+  }).join("");
+}
+
+/* ---------------- Index tiles ---------------- */
+function sparkPath(seed,w=120,h=34){
+  let pts=[],v=h*0.6;
+  for(let i=0;i<=20;i++){v+=(Math.sin(seed+i*0.9)+Math.cos(seed*1.7+i*0.5))*2.2;v=Math.max(4,Math.min(h-4,v));pts.push([i/20*w,v]);}
+  return "M"+pts.map(p=>p[0].toFixed(1)+","+p[1].toFixed(1)).join(" L");
+}
+function buildIndexTiles(){
+  document.getElementById("indexTiles").innerHTML=indexes.map((i,idx)=>{
+    const up=i.chg>=0;const col=up?"var(--good-bright)":"var(--bad-bright)";
+    const stroke=i.sym==="EWZ"?"var(--s-orange)":"var(--s-blue)";
+    return `<div class="tile" style="position:relative;overflow:hidden">
+      <div class="label">${i.sym} · ${i.label}</div>
+      <div class="val tabular">$${fmt(i.px)}</div>
+      <div class="delta" style="color:${col}">${up?"▲":"▼"} ${fmt(Math.abs(i.chg))}%</div>
+      <svg style="position:absolute;right:0;bottom:0;left:0;height:34px;opacity:.45" viewBox="0 0 120 34" preserveAspectRatio="none"><path d="${sparkPath(idx*3+1)}" fill="none" stroke="${stroke}" stroke-width="1.5"/></svg>
+    </div>`;
+  }).join("");
+}
+
+/* ---------------- Positions table ---------------- */
+function buildPositions(){
+  document.getElementById("posBody").innerHTML=positions.map(p=>{
+    const span=p.target-p.stop;
+    const entryMk=((p.entry-p.stop)/span)*100;
+    return `<tr>
+      <td><span class="sym">${p.sym}</span><span class="side">LONG</span></td>
+      <td>${p.qty}</td>
+      <td>${fmt(p.entry)}</td>
+      <td style="color:var(--bad-bright)">${fmt(p.stop)}</td>
+      <td style="color:var(--good-bright)">${fmt(p.target)}</td>
+      <td>${fmt(p.rr,1)}</td>
+      <td>$${fmt(p.risk,0)}</td>
+      <td>
+        <div class="prog"><div class="fill" style="width:${entryMk}%"></div><div class="mk" style="left:calc(${entryMk}% - 1px)"></div></div>
+        <div class="proglabels"><span>${fmt(p.stop)}</span><span>entry ${fmt(p.entry)}</span><span>${fmt(p.target)}</span></div>
+      </td>
+      <td><button class="btn btn-row place-one" data-sym="${p.sym}" disabled title="Connect paper keys to enable"><span class="pro-only">Place</span><span class="simple-only">Buy this</span></button></td>
+    </tr>`;
+  }).join("");
+}
+
+/* ---------------- Donut ---------------- */
+function buildDonut(){
+  const cost=positions.map(p=>({sym:p.sym,amt:p.entry*p.qty,hex:p.hex}));
+  const deployed=cost.reduce((a,b)=>a+b.amt,0);
+  const cash=100000-deployed;
+  const segs=[...cost,{sym:"Cash",amt:cash,hex:"#45443f"}];
+  const total=100000;
+  const cx=70,cy=70,r=54,sw=20;const C=2*Math.PI*r;
+  let off=0;let svg="";
+  segs.forEach(s=>{
+    const len=(s.amt/total)*C;
+    svg+=`<circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="${s.hex}" stroke-width="${sw}" stroke-dasharray="${len-2} ${C-len+2}" stroke-dashoffset="${-off}" transform="rotate(-90 ${cx} ${cy})"/>`;
+    off+=len;
+  });
+  svg+=`<text x="${cx}" y="${cy-4}" text-anchor="middle" fill="var(--ink)" font-size="17" font-weight="700" font-family="var(--mono)">34%</text>`;
+  svg+=`<text x="${cx}" y="${cy+12}" text-anchor="middle" fill="var(--muted)" font-size="9" letter-spacing="1">DEPLOYED</text>`;
+  document.getElementById("donut").innerHTML=svg;
+  document.getElementById("donutLegend").innerHTML=segs.map(s=>
+    `<div class="row"><span class="sw" style="background:${s.hex}"></span><span class="nm">${s.sym}</span><span class="amt tabular">$${fmt(s.amt,0)}</span></div>`
+  ).join("");
+}
+
+/* ---------------- Risk gauge (semicircle) ---------------- */
+function buildGauge(){
+  const used=1411, cutoff=3000;const frac=used/cutoff;
+  const cx=120,cy=108,r=82;
+  function pt(a){const rad=(180-a*180)*Math.PI/180;return [cx+r*Math.cos(rad),cy-r*Math.sin(rad)];}
+  const [sx,sy]=pt(0),[ex,ey]=pt(1),[vx,vy]=pt(frac);
+  let svg=`<path d="M ${sx} ${sy} A ${r} ${r} 0 0 1 ${ex} ${ey}" fill="none" stroke="var(--grid)" stroke-width="14" stroke-linecap="round"/>`;
+  svg+=`<path d="M ${sx} ${sy} A ${r} ${r} 0 0 1 ${vx} ${vy}" fill="none" stroke="var(--good)" stroke-width="14" stroke-linecap="round"/>`;
+  svg+=`<text x="${sx}" y="${sy+18}" text-anchor="start" fill="var(--muted)" font-size="10" font-family="var(--mono)">$0</text>`;
+  svg+=`<text x="${ex}" y="${ey+18}" text-anchor="end" fill="var(--bad)" font-size="10" font-family="var(--mono)">$3k</text>`;
+  document.getElementById("gauge").innerHTML=svg;
+}
+
+/* ---------------- Clock ---------------- */
+function tickClock(){
+  const now=new Date();
+  document.getElementById("clk").textContent=now.toLocaleTimeString("en-US",{hour12:false})+" local";
+  document.getElementById("clkd").textContent=now.toLocaleDateString("en-US",{weekday:"short",month:"short",day:"numeric",year:"numeric"});
+}
+
+/* ---------------- Trading: mode detection (paper / LIVE real money) ------- */
+let CONNECTED=false, STATUS=null;
+const LIVE_PHRASE="TRADE LIVE";
+
+async function checkConnection(){
+  // Only meaningful when served by server.py (http://127.0.0.1). On file:// this fails -> read-only.
+  try{
+    const r=await fetch("/api/status",{cache:"no-store"});
+    if(!r.ok) return;
+    const s=await r.json();
+    STATUS=s;
+    if(s.connected){ goLive(s); }
+    else { setDisconnected(s.reason||s.mode_reason); }
+  }catch(e){ /* file:// or no server -> stay in read-only plan view */ }
+}
+
+function setDisconnected(reason){
+  CONNECTED=false;
+  if(reason){
+    document.getElementById("noteText").innerHTML=
+      "📋 <b>Queued plan</b> — "+reason+" Trading is disabled; this is a read-only plan view. Add keys to <span class='k'>Config/.env</span> and restart the server to enable.";
+  }
+}
+
+function renderRails(risk){
+  if(!risk||!risk.max_open_positions) return;
+  const ul=document.querySelector(".rails");
+  if(!ul) return;
+  ul.innerHTML=[
+    `<b>Stop-loss required</b> — no stop, no trade (server-enforced)`,
+    `<b>Per-order cap</b> — $${(+risk.max_order_notional).toLocaleString("en-US")} max per order`,
+    `<b>Per-trade risk</b> — ≤${risk.max_risk_per_trade_pct}% of equity at the stop`,
+    `<b>Daily loss kill switch</b> — down ${risk.daily_max_loss_pct}% = done for the day`,
+    `<b>Max open / per day</b> — ${risk.max_open_positions} positions, ${risk.max_trades_per_day} trades/day`,
+    `<b>No shorting</b> — sells only reduce what you own`,
+  ].map(t=>`<li><span class="ok">✓</span><span>${t}</span></li>`).join("");
+}
+
+function goLive(s){
+  CONNECTED=true;
+  const real = s.mode==="live";
+  const badge=document.getElementById("modeBadge");
+  const money=document.getElementById("moneyBadge");
+  const note=document.getElementById("noteBar");
+  if(real){
+    badge.className="badge badge-realmoney"; badge.innerHTML="🔴 LIVE · REAL MONEY";
+    money.className="badge badge-realmoney"; money.textContent="REAL DOLLARS AT RISK";
+    note.innerHTML="<span class='note-danger'>🔴 <b>REAL-MONEY mode.</b> Every order costs actual dollars. Guardrails: $"+
+      (+s.risk.max_order_notional).toLocaleString("en-US")+"/order, "+s.risk.max_trades_per_day+
+      " trades/day, "+s.risk.daily_max_loss_pct+"% daily-loss kill switch, stop required. Each order needs the typed phrase <b>\""+LIVE_PHRASE+"\"</b>.</span>";
+  }else{
+    badge.className="badge badge-live"; badge.innerHTML="<span class='dot-live'></span>LIVE PAPER";
+    note.innerHTML="<span class='note-ok'>🟢 <b>Connected to Alpaca paper account.</b> Live simulated-money trading enabled — orders still require your confirmation.</span>";
+  }
+  if(s.halted){
+    note.innerHTML="<span class='note-danger'>⛔ <b>HALTED FOR TODAY ("+s.mode.toUpperCase()+"):</b> "+(s.halt_reason||"kill switch active")+". New orders are refused until tomorrow.</span>";
+  }
+  renderRails(s.risk);
+  const kill=document.getElementById("killBtn");
+  kill.style.display="inline-block";
+  refreshLiveAccount();
+
+  // Enable trade buttons
+  document.getElementById("placeAll").disabled=false;
+  document.getElementById("placeAll").title="Place all queued orders (with confirmation)";
+  document.querySelectorAll(".place-one").forEach(b=>{b.disabled=false;b.title="Place this order (with confirmation)";});
+}
+
+/* Kill switch: cancel all orders, flatten all positions, halt for the day */
+document.getElementById("killBtn").addEventListener("click",async()=>{
+  const real=STATUS&&STATUS.mode==="live";
+  let confirmPhrase="";
+  if(real){
+    confirmPhrase=prompt('KILL SWITCH (REAL MONEY): cancels every order and SELLS every position at market, then halts for the day.\n\nType "'+LIVE_PHRASE+'" to confirm:')||"";
+    if(confirmPhrase!==LIVE_PHRASE) return;
+  }else{
+    if(!confirm("Kill switch: cancel all paper orders, sell all paper positions, and stop for the day?")) return;
+  }
+  try{
+    const r=await fetch("/api/kill",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({confirm:confirmPhrase})});
+    const j=await r.json();
+    alert(j.message||"Kill switch sent.");
+    checkConnection();
+  }catch(e){ alert("Kill switch failed: "+e.message); }
+});
+
+async function refreshLiveAccount(){
+  if(!CONNECTED) return;
+  try{
+    const [a,pr]=await Promise.all([
+      fetch("/api/status",{cache:"no-store"}).then(r=>r.json()),
+      fetch("/api/positions",{cache:"no-store"}).then(r=>r.json()),
+    ]);
+    const acct=a.account||{};
+    const eq=parseFloat(acct.equity||acct.portfolio_value||0);
+    const cash=parseFloat(acct.cash||0);
+    const posArr=Array.isArray(pr)?pr:[];
+    let upl=0; posArr.forEach(p=>upl+=parseFloat(p.unrealized_pl||0));
+    // Portfolio row tiles are the 2nd .grid.cols-4 (index tiles are the 1st)
+    const rows=document.querySelectorAll(".grid.cols-4");
+    const pr2=rows[1];
+    if(pr2){
+      const vals=pr2.querySelectorAll(".tile .val");
+      const metas=pr2.querySelectorAll(".tile .meta");
+      if(vals[0]){vals[0].textContent="$"+Math.round(eq).toLocaleString("en-US");}
+      if(vals[1]){const dep=eq-cash; vals[1].textContent="$"+Math.round(dep).toLocaleString("en-US"); if(metas[1])metas[1].textContent=(eq?Math.round(dep/eq*100):0)+"% deployed";}
+      if(vals[2]){vals[2].textContent=(upl>=0?"+$":"-$")+Math.abs(upl).toFixed(2); vals[2].style.color=upl>0?"var(--good-bright)":upl<0?"var(--bad-bright)":"var(--muted)"; if(metas[2])metas[2].textContent=posArr.length?"across "+posArr.length+" live position(s)":"no open positions";}
+      const maxPos=(STATUS&&STATUS.risk&&STATUS.risk.max_open_positions)||5;
+      if(vals[3]){vals[3].innerHTML=posArr.length+" <span style='font-size:15px;color:var(--muted)'>/ "+maxPos+" max</span>";}
+    }
+  }catch(e){}
+}
+
+/* ---------------- Confirm modal + order placement ---------------- */
+const overlay=document.getElementById("overlay");
+let pendingOrders=[]; // array of order objects to place on confirm
+
+function ticketRows(o){
+  const s = VIEW==="simple";
+  return `<div class="ticket">
+    <div class="tr"><span class="tk">${s?"Stock":"Symbol"}</span><span class="tv">${o.symbol}</span></div>
+    <div class="tr"><span class="tk">${s?"Doing":"Side"}</span><span class="tv">${s?"Buying":"BUY · LONG"}</span></div>
+    <div class="tr"><span class="tk">${s?"How many":"Quantity"}</span><span class="tv">${o.qty} shares</span></div>
+    <div class="tr"><span class="tk">${s?"Buy around":"Entry (limit)"}</span><span class="tv">$${fmt(o.limit_price)}</span></div>
+    <div class="tr"><span class="tk">${s?"Auto-sell if it drops to":"Stop-loss"}</span><span class="tv" style="color:var(--bad-bright)">$${fmt(o.stop)}</span></div>
+    <div class="tr"><span class="tk">${s?"Auto-sell if it rises to":"Take-profit"}</span><span class="tv" style="color:var(--good-bright)">$${fmt(o.target)}</span></div>
+    <div class="tr"><span class="tk">${s?"About how much":"Est. cost"}</span><span class="tv">$${fmt(o.qty*o.limit_price,0)}</span></div>
+  </div>`;
+}
+
+function openConfirm(orders){
+  pendingOrders=orders;
+  const s = VIEW==="simple";
+  const real = STATUS&&STATUS.mode==="live";
+  document.getElementById("mTitle").textContent = real
+    ? (orders.length>1 ? `⚠ REAL-MONEY: confirm ${orders.length} orders` : `⚠ REAL-MONEY order: ${orders[0].symbol}`)
+    : s
+    ? (orders.length>1 ? `Buy these ${orders.length} stocks?` : `Buy ${orders[0].symbol}?`)
+    : (orders.length>1 ? `Confirm ${orders.length} paper orders` : "Confirm paper order");
+  document.getElementById("mSub").textContent = real
+    ? "This spends ACTUAL DOLLARS from the live brokerage account. Read the ticket twice."
+    : s
+    ? "This uses PRETEND money. Nothing happens until you tap the button below."
+    : "Review the ticket. Nothing is sent until you confirm.";
+  document.getElementById("mNote").innerHTML = real
+    ? "🔴 <b>REAL MONEY.</b> This submits a bracket order on the <b>LIVE Alpaca account</b>. The stop-loss caps the loss but gaps can fill worse. Server guardrails apply and may still refuse it."
+    : s
+    ? "⚠️ This places a <b>practice buy order with automatic sell points</b> (pretend money). You can cancel anytime."
+    : "⚠️ This submits a <b>bracket order on the Alpaca PAPER account</b> (simulated money). Entry + stop-loss + take-profit will be live until filled or cancelled.";
+  document.getElementById("mConfirm").textContent = real ? "Place REAL order" : s ? "Yes, buy it (practice)" : "Confirm & place";
+  let body=orders.map(ticketRows).join("");
+  if(real){
+    body+=`<div class="live-phrase"><label>Type "${LIVE_PHRASE}" to unlock the button</label><input id="mPhrase" autocomplete="off" placeholder="${LIVE_PHRASE}"></div>`;
+  }
+  document.getElementById("mBody").innerHTML=body;
+  const res=document.getElementById("mResult"); res.style.display="none"; res.className="modal-result";
+  const btn=document.getElementById("mConfirm");
+  btn.disabled=!!real;
+  if(real){
+    document.getElementById("mPhrase").addEventListener("input",e=>{ btn.disabled = e.target.value!==LIVE_PHRASE; });
+  }
+  btn.onclick=submitPending;
+  document.getElementById("mCancel").textContent=s?"Not now":"Cancel";
+  overlay.classList.add("show");
+}
+function closeModal(){ overlay.classList.remove("show"); pendingOrders=[]; }
+
+document.getElementById("mCancel").addEventListener("click",closeModal);
+overlay.addEventListener("click",e=>{ if(e.target===overlay) closeModal(); });
+
+async function submitPending(){
+  const s = VIEW==="simple";
+  const btn=document.getElementById("mConfirm"); btn.disabled=true; btn.textContent=s?"Buying…":"Placing…";
+  const res=document.getElementById("mResult"); res.style.display="block"; res.className="modal-result"; res.innerHTML="";
+  const out=[];
+  for(const o of pendingOrders){
+    try{
+      const phraseEl=document.getElementById("mPhrase");
+      const r=await fetch("/api/order",{method:"POST",headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({symbol:o.symbol,qty:o.qty,side:"buy",type:"limit",
+          limit_price:o.limit_price,stop:o.stop,target:o.target,
+          confirm_live: phraseEl ? phraseEl.value : undefined})});
+      const j=await r.json();
+      if(r.ok && j.id){ out.push(`✓ ${o.symbol}: ${s?"order placed":"accepted — order "+j.id.slice(0,8)} (${j.status||"submitted"})`); }
+      else { out.push(`✗ ${o.symbol}: ${j.message||((s?"couldn't place":"rejected")+" ("+r.status+")")}`); }
+    }catch(e){ out.push(`✗ ${o.symbol}: ${e.message}`); }
+  }
+  const anyFail=out.some(l=>l.startsWith("✗"));
+  res.className="modal-result "+(anyFail?"err":"ok");
+  res.innerHTML=out.join("<br>");
+  btn.textContent="Done"; document.getElementById("mCancel").textContent="Close";
+  btn.disabled=false; btn.onclick=closeModal;
+  refreshLiveAccount();
+}
+document.getElementById("mCancel").addEventListener("click",closeModal);
+overlay.addEventListener("click",e=>{ if(e.target===overlay) closeModal(); });
+
+function orderFromPos(sym){
+  const p=positions.find(x=>x.sym===sym);
+  return {symbol:p.sym,qty:p.qty,limit_price:p.entry,stop:p.stop,target:p.target};
+}
+document.addEventListener("click",e=>{
+  const one=e.target.closest(".place-one");
+  if(one && !one.disabled){ openConfirm([orderFromPos(one.dataset.sym)]); }
+});
+document.getElementById("placeAll").addEventListener("click",()=>{
+  if(document.getElementById("placeAll").disabled) return;
+  openConfirm(positions.map(p=>orderFromPos(p.sym)));
+});
+
+/* ---------------- Position-size calculator ---------------- */
+function buildCalc(){
+  const eq=parseFloat(document.getElementById("cEquity").value)||0;
+  const riskPct=parseFloat(document.getElementById("cRisk").value)||0;
+  const entry=parseFloat(document.getElementById("cEntry").value)||0;
+  const stop=parseFloat(document.getElementById("cStop").value)||0;
+  const out=document.getElementById("calcOut");
+  const verd=document.getElementById("calcVerdict");
+  const s=VIEW==="simple";
+
+  if(entry<=0||stop<=0||eq<=0){ out.innerHTML=""; verd.className="calc-verdict bad"; verd.textContent=s?"Fill in all the boxes above.":"Enter equity, entry and stop."; return; }
+  if(stop>=entry){ out.innerHTML=""; verd.className="calc-verdict bad"; verd.textContent=s?"Your sell-if-it-drops price must be LOWER than your buy price.":"Stop must be below entry for a long."; return; }
+
+  const riskDollars=eq*(riskPct/100);
+  const perShareRisk=entry-stop;
+  const shares=Math.floor(riskDollars/perShareRisk);
+  const posValue=shares*entry;
+  const posPct=posValue/eq*100;
+  const actualRisk=shares*perShareRisk;
+  const stopDistPct=perShareRisk/entry*100;
+
+  out.innerHTML=
+    `<div class="r"><span class="rk">${s?"Shares to buy":"Share size"}</span><span class="rv">${shares.toLocaleString("en-US")}</span></div>`+
+    `<div class="r"><span class="rk">${s?"That costs about":"Position value"}</span><span class="rv">$${fmt(posValue,0)} <span style="color:var(--muted);font-weight:400">(${fmt(posPct,1)}% of account)</span></span></div>`+
+    `<div class="r"><span class="rk">${s?"Most you'd lose":"Risk at stop"}</span><span class="rv" style="color:var(--bad-bright)">$${fmt(actualRisk,0)}</span></div>`+
+    `<div class="r"><span class="rk">${s?"Stop is this far below":"Stop distance"}</span><span class="rv">${fmt(stopDistPct,1)}%</span></div>`;
+
+  const tooBig=posPct>10;
+  const tooRisky=riskPct>1.5;
+  if(shares<1){ verd.className="calc-verdict bad"; verd.textContent=s?"That risk amount is too small to buy even 1 share here. Raise risk % or pick a cheaper stock.":"Risk too small for 1 share at this stop distance."; }
+  else if(tooBig){ verd.className="calc-verdict bad"; verd.innerHTML=s?`⚠️ This bet is <b>${fmt(posPct,0)}% of your account</b> — bigger than Ralph's 10% rule. Risky if one trade goes wrong.`:`⚠️ Position is ${fmt(posPct,1)}% of equity — exceeds the 10% per-position rail.`; }
+  else if(tooRisky){ verd.className="calc-verdict bad"; verd.innerHTML=s?`⚠️ Risking ${fmt(riskPct,1)}% per trade is high. Pros usually keep it at 1% or less.`:`⚠️ ${fmt(riskPct,1)}% risk/trade exceeds the ~1% guideline.`; }
+  else { verd.className="calc-verdict ok"; verd.innerHTML=s?`✓ Looks sensible — small, controlled risk inside Ralph's safety rules.`:`✓ Within rails: ${fmt(posPct,1)}% position, ${fmt(riskPct,1)}% risk.`; }
+}
+["cEquity","cRisk","cEntry","cStop"].forEach(id=>{
+  document.getElementById(id).addEventListener("input",buildCalc);
+});
+
+/* ---------------- Trade journal ---------------- */
+let JOURNAL=[], JBACKEND="local";
+const JKEY="ralphJournal";
+const money=(n)=>(n<0?"-$":"$")+fmt(Math.abs(n),2);
+
+function jcalcPnl(t){
+  const e=parseFloat(t.entry), x=parseFloat(t.exit), q=parseFloat(t.qty);
+  if(isNaN(e)||isNaN(x)||isNaN(q)) return null;
+  return String(t.side).toLowerCase()==="long" ? (x-e)*q : (e-x)*q;
+}
+function jpersistLocal(){ localStorage.setItem(JKEY, JSON.stringify(JOURNAL)); }
+
+async function journalLoad(){
+  try{
+    const r=await fetch("/api/journal",{cache:"no-store"});
+    if(r.ok){ JBACKEND="server"; JOURNAL=await r.json(); return; }
+  }catch(e){}
+  JBACKEND="local";
+  try{ JOURNAL=JSON.parse(localStorage.getItem(JKEY)||"[]"); }catch(e){ JOURNAL=[]; }
+}
+async function journalAdd(trade){
+  if(JBACKEND==="server"){
+    try{
+      const r=await fetch("/api/journal",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(trade)});
+      const j=await r.json(); JOURNAL.push(j); return;
+    }catch(e){ /* fall through to local */ }
+  }
+  const nextId=JOURNAL.reduce((m,t)=>Math.max(m,+t.id||0),0)+1;
+  trade.id=nextId; trade.pnl=jcalcPnl(trade);
+  JOURNAL.push(trade); jpersistLocal();
+}
+async function journalDelete(id){
+  if(JBACKEND==="server"){
+    try{ await fetch("/api/journal/delete",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({id})}); }catch(e){}
+  }
+  JOURNAL=JOURNAL.filter(t=>+t.id!==+id);
+  if(JBACKEND!=="server") jpersistLocal();
+}
+
+function journalStats(){
+  const trades=JOURNAL.filter(t=>t.pnl!=null&&!isNaN(+t.pnl)).map(t=>+t.pnl);
+  const n=trades.length;
+  const wins=trades.filter(p=>p>0), losses=trades.filter(p=>p<0);
+  const grossWin=wins.reduce((a,b)=>a+b,0), grossLoss=Math.abs(losses.reduce((a,b)=>a+b,0));
+  const total=trades.reduce((a,b)=>a+b,0);
+  return {
+    n, wins:wins.length, losses:losses.length,
+    winRate:n?wins.length/n*100:0,
+    avgWin:wins.length?grossWin/wins.length:0,
+    avgLoss:losses.length?grossLoss/losses.length:0,
+    expectancy:n?total/n:0,
+    total,
+    profitFactor: grossLoss>0 ? grossWin/grossLoss : (grossWin>0?Infinity:0),
+  };
+}
+function jOrdered(){
+  return JOURNAL.filter(t=>t.pnl!=null&&!isNaN(+t.pnl)).map(t=>({...t,pnl:+t.pnl}))
+    .sort((a,b)=>(a.date||"").localeCompare(b.date||"")||(a.id-b.id));
+}
+function maxDrawdown(ordered){
+  let peak=0,cum=0,dd=0;
+  ordered.forEach(t=>{cum+=t.pnl; peak=Math.max(peak,cum); dd=Math.min(dd,cum-peak);});
+  return dd;
+}
+
+function renderStats(s){
+  const pf = s.profitFactor===Infinity ? "∞" : fmt(s.profitFactor,2);
+  const col=v=>v>0?"var(--good-bright)":v<0?"var(--bad-bright)":"var(--muted)";
+  const tiles=[
+    {p:"Total trades",s:"Trades",v:String(s.n)},
+    {p:"Win rate",s:"How often it wins",v:s.n?fmt(s.winRate,0)+"%":"—",sub:s.n?`${s.wins}W / ${s.losses}L`:""},
+    {p:"Net P&L",s:"Total made/lost",v:s.n?money(s.total):"—",c:col(s.total)},
+    {p:"Avg win",s:"Typical win",v:s.wins?money(s.avgWin):"—",c:s.wins?"var(--good-bright)":"var(--muted)"},
+    {p:"Avg loss",s:"Typical loss",v:s.losses?"-"+money(s.avgLoss):"—",c:s.losses?"var(--bad-bright)":"var(--muted)"},
+    {p:"Expectancy",s:"Avg per trade",v:s.n?money(s.expectancy):"—",c:col(s.expectancy)},
+    {p:"Profit factor",s:"Win $ ÷ lose $",v:s.n?pf:"—"},
+  ];
+  document.getElementById("jStats").innerHTML=tiles.map(t=>
+    `<div class="tile"><div class="label"><span class="pro-only">${t.p}</span><span class="simple-only">${t.s}</span></div>`+
+    `<div class="val tabular" style="font-size:22px;${t.c?`color:${t.c}`:""}">${t.v}</div>`+
+    `<div class="meta">${t.sub||"&nbsp;"}</div></div>`
+  ).join("");
+}
+function renderCurve(ordered){
+  const svg=document.getElementById("jCurve");
+  const W=600,H=180,pad=14;
+  if(!ordered.length){ svg.innerHTML=`<text x="300" y="92" text-anchor="middle" fill="var(--muted)" font-size="13">No trades yet — log one to see your money grow (or shrink).</text>`; return; }
+  let cum=0; const pts=[0];
+  ordered.forEach(t=>{cum+=t.pnl; pts.push(cum);});
+  const cmax=Math.max(0,...pts), cmin=Math.min(0,...pts), range=(cmax-cmin)||1, n=pts.length-1;
+  const X=i=>pad+(i/(n||1))*(W-2*pad);
+  const Y=c=>pad+(1-(c-cmin)/range)*(H-2*pad);
+  const zeroY=Y(0);
+  const line="M "+pts.map((c,i)=>`${X(i).toFixed(1)} ${Y(c).toFixed(1)}`).join(" L ");
+  const area=line+` L ${X(n).toFixed(1)} ${zeroY.toFixed(1)} L ${X(0).toFixed(1)} ${zeroY.toFixed(1)} Z`;
+  const pos=cum>=0;
+  svg.innerHTML=
+    `<line x1="${pad}" y1="${zeroY.toFixed(1)}" x2="${W-pad}" y2="${zeroY.toFixed(1)}" stroke="var(--line)" stroke-width="1" stroke-dasharray="3 3"/>`+
+    `<path d="${area}" fill="${pos?'rgba(25,209,25,.10)':'rgba(242,80,80,.10)'}"/>`+
+    `<path d="${line}" fill="none" stroke="${pos?'var(--good-bright)':'var(--bad-bright)'}" stroke-width="2"/>`;
+}
+function renderBySetup(valid){
+  const el=document.getElementById("jBySetup");
+  if(!valid.length){ el.innerHTML=`<div class="jempty">Tag your trades with a setup (like "breakout" or "pullback") to see which ideas actually make money.</div>`; return; }
+  const g={};
+  valid.forEach(t=>{const k=(t.setup||"untagged").toLowerCase();(g[k]=g[k]||[]).push(t);});
+  const rows=Object.entries(g).map(([k,arr])=>{
+    const net=arr.reduce((a,t)=>a+t.pnl,0);
+    const wr=arr.length?arr.filter(t=>t.pnl>0).length/arr.length*100:0;
+    return {k,net,wr,n:arr.length};
+  }).sort((a,b)=>b.net-a.net);
+  el.innerHTML=rows.map(r=>
+    `<div class="bs"><div class="bshead"><span class="bsname">${r.k}</span>`+
+    `<span class="bsnet" style="color:${r.net>=0?'var(--good-bright)':'var(--bad-bright)'}">${r.net>=0?'+':''}${money(r.net)}</span></div>`+
+    `<div class="bsbar"><div class="bswin" style="width:${r.wr}%"></div></div>`+
+    `<div class="bsmeta">${r.n} trade${r.n!==1?'s':''} · ${fmt(r.wr,0)}% win</div></div>`
+  ).join("");
+}
+function renderTable(){
+  const el=document.getElementById("jTableWrap");
+  if(!JOURNAL.length){ el.innerHTML=`<div class="jempty">No trades logged yet.<br>Click <b>＋ Log a trade</b> to add your first one. Tip: log a trade only once it's <b>finished</b> (you've already sold).</div>`; return; }
+  const rows=JOURNAL.map(t=>({...t,pnl:t.pnl!=null?+t.pnl:jcalcPnl(t)}))
+    .sort((a,b)=>(b.date||"").localeCompare(a.date||"")||(b.id-a.id));
+  el.innerHTML=`<div style="overflow-x:auto"><table><thead><tr>`+
+    `<th style="text-align:left">Date</th><th style="text-align:left">Stock</th><th>Side</th><th>Qty</th><th>Entry</th><th>Exit</th><th>P&L</th><th style="text-align:left">Setup</th><th></th>`+
+    `</tr></thead><tbody>`+
+    rows.map(t=>`<tr>`+
+      `<td style="text-align:left">${t.date||'—'}</td>`+
+      `<td style="text-align:left"><span class="sym">${t.symbol||'—'}</span></td>`+
+      `<td>${(t.side||'long')==='long'?'LONG':'SHORT'}</td>`+
+      `<td>${t.qty??'—'}</td>`+
+      `<td>${t.entry!=null&&t.entry!==''?fmt(+t.entry):'—'}</td>`+
+      `<td>${t.exit!=null&&t.exit!==''?fmt(+t.exit):'—'}</td>`+
+      `<td style="color:${t.pnl>=0?'var(--good-bright)':'var(--bad-bright)'}">${t.pnl!=null?(t.pnl>=0?'+':'')+money(t.pnl):'—'}</td>`+
+      `<td style="text-align:left;font-family:var(--sans);color:var(--ink-2)">${t.setup||'—'}</td>`+
+      `<td><button class="del-btn" data-del="${t.id}" title="Delete this trade">✕</button></td>`+
+    `</tr>`).join("")+`</tbody></table></div>`;
+}
+function updateTrackRecord(s){
+  const ordered=jOrdered();
+  const dd=maxDrawdown(ordered);
+  const set=(id,txt,color)=>{const el=document.getElementById(id);if(el){el.textContent=txt;if(color)el.style.color=color;}};
+  set("trCount", String(s.n));
+  if(s.n){
+    set("trWin", `${fmt(s.winRate,0)}% (${s.wins}/${s.n})`, "var(--ink)");
+    set("trExp", `${money(s.expectancy)}/trade`, s.expectancy>0?"var(--good-bright)":s.expectancy<0?"var(--bad-bright)":"var(--ink)");
+    set("trDD", dd<0?money(dd):"$0.00", dd<0?"var(--bad-bright)":"var(--ink)");
+  }else{
+    set("trWin","— needs ≥20 trades","var(--muted)"); set("trExp","—","var(--muted)"); set("trDD","—","var(--muted)");
+  }
+  const chip=document.getElementById("trStatus");
+  if(chip){
+    if(s.n>=20 && s.expectancy>0){ chip.innerHTML=`<span class="status-chip" style="background:rgba(12,163,12,.14);color:var(--good-bright);border-color:rgba(12,163,12,.3)">SHOWING PROMISE</span>`; }
+    else { chip.innerHTML=`<span class="status-chip">EXPERIMENTAL</span>`; }
+  }
+}
+function renderJournal(){
+  const s=journalStats();
+  renderStats(s);
+  renderCurve(jOrdered());
+  renderBySetup(jOrdered());
+  renderTable();
+  updateTrackRecord(s);
+}
+
+/* ---- log form ---- */
+function jPnlPreview(){
+  const t={side:document.getElementById("jSide").value,entry:document.getElementById("jEntry").value,exit:document.getElementById("jExit").value,qty:document.getElementById("jQty").value};
+  const p=jcalcPnl(t);
+  const el=document.getElementById("jPnlPreview");
+  if(p==null){ el.textContent="P&L: —"; el.style.color="var(--muted)"; }
+  else { el.textContent="P&L: "+(p>=0?"+":"")+money(p); el.style.color=p>=0?"var(--good-bright)":"var(--bad-bright)"; }
+}
+function jOpenForm(){
+  const f=document.getElementById("jForm");
+  f.style.display="block";
+  if(!document.getElementById("jDate").value){
+    const d=new Date(); document.getElementById("jDate").value=d.toISOString().slice(0,10);
+  }
+  jPnlPreview();
+}
+function jClearForm(){
+  ["jSym","jQty","jEntry","jExit","jSetup","jNotes"].forEach(id=>document.getElementById(id).value="");
+  document.getElementById("jSide").value="long";
+  jPnlPreview();
+}
+document.getElementById("jToggleForm").addEventListener("click",()=>{
+  const f=document.getElementById("jForm");
+  if(f.style.display==="none"){ jOpenForm(); } else { f.style.display="none"; }
+});
+document.getElementById("jCancel").addEventListener("click",()=>{ document.getElementById("jForm").style.display="none"; });
+["jSide","jEntry","jExit","jQty"].forEach(id=>document.getElementById(id).addEventListener("input",jPnlPreview));
+document.getElementById("jSave").addEventListener("click",async()=>{
+  const sym=document.getElementById("jSym").value.trim().toUpperCase();
+  const entry=document.getElementById("jEntry").value, exit=document.getElementById("jExit").value, qty=document.getElementById("jQty").value;
+  if(!sym || entry===""||exit===""||qty===""){ alert("Please fill in at least Stock, Qty, Entry and Exit."); return; }
+  const trade={
+    date:document.getElementById("jDate").value || new Date().toISOString().slice(0,10),
+    symbol:sym, side:document.getElementById("jSide").value,
+    qty:parseFloat(qty), entry:parseFloat(entry), exit:parseFloat(exit),
+    setup:document.getElementById("jSetup").value.trim(), notes:document.getElementById("jNotes").value.trim(),
+  };
+  const btn=document.getElementById("jSave"); btn.disabled=true; btn.textContent="Saving…";
+  await journalAdd(trade);
+  btn.disabled=false; btn.textContent="Save trade";
+  jClearForm(); document.getElementById("jForm").style.display="none";
+  renderJournal();
+});
+document.getElementById("jTableWrap").addEventListener("click",async(e)=>{
+  const b=e.target.closest("[data-del]");
+  if(!b) return;
+  await journalDelete(b.dataset.del);
+  renderJournal();
+});
+
+/* ---------------- Simple / Pro view toggle ---------------- */
+let VIEW = localStorage.getItem("ralphView") || "simple";  // default: friendly
+function applyView(v){
+  VIEW = v;
+  document.body.classList.toggle("mode-simple", v==="simple");
+  document.body.classList.toggle("mode-pro", v==="pro");
+  document.querySelectorAll("#viewToggle .vt-btn").forEach(b=>{
+    b.classList.toggle("on", b.dataset.mode===v);
+  });
+  localStorage.setItem("ralphView", v);
+  if(typeof buildCalc==="function") buildCalc();
+}
+document.querySelectorAll("#viewToggle .vt-btn").forEach(b=>{
+  b.addEventListener("click",()=>applyView(b.dataset.mode));
+});
+
+/* ---------------- Boot ---------------- */
+applyView(VIEW);
+buildStrip(); buildIndexTiles(); buildPositions(); buildDonut(); buildGauge(); buildCalc();
+journalLoad().then(renderJournal);
+tickClock(); setInterval(tickClock,1000);
+checkConnection();
+setInterval(refreshLiveAccount,15000);
+</script>
+</body>
+</html>
