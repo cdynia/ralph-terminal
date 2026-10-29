@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Research — Trading by Ralph</title>
+<meta name="description" content="Why Ralph copies public insider filings, not social-media traders. The evidence, with sources.">
+<link rel="stylesheet" href="site.css">
+</head>
+<body>
+
+<div class="rail-strip" role="note" aria-label="Active guardrails">
+  <span>stop-loss <b>required</b></span>
+  <span>risk/trade <b>&le;1%</b></span>
+  <span>daily kill switch <b>-2%</b></span>
+  <span>per order <b>$250 max</b></span>
+  <span>shorting <b>off</b></span>
+  <span>mode <b>paper-first</b></span>
+</div>
+
+<nav class="nav">
+  <span class="wordmark">TRADING BY <em>RALPH</em></span>
+  <a href="terminal.html">Terminal</a>
+  <a href="research.html" aria-current="page">Research</a>
+  <a href="strategy.html">Strategy</a>
+  <a class="gh" href="https://github.com/cdynia/ralph-terminal">GitHub</a>
+</nav>
+
+<article class="page">
+  <p class="kicker">research &middot; 2026-10-28</p>
+  <h1>Copy the filings, not the influencers</h1>
+  <p class="lede">We asked a simple question: who should Ralph actually follow?
+  The loudest answer — profitable traders on X — turns out to be the one the
+  evidence says loses money. The quiet answer, buried in SEC paperwork, has a
+  real edge behind it.</p>
+
+  <div class="verdict">
+    <p><strong>The verdict.</strong> Social-media traders are education at best and exit
+    liquidity at worst — Ralph reads them and copies none of them. Corporate insiders and
+    members of Congress, however, are forced by law to publish their trades. That public
+    paper trail is the signal the bot is designed around.</p>
+  </div>
+
+  <h2>What following X traders actually returns</h2>
+  <p>The largest study of finance influencers to date — 72 million posts from 29,000
+  accounts — graded each one by what following their advice would have earned
+  (<a href="https://www.sfi.ch/en/publications/n-23-30-finfluencers">Swiss Finance Institute</a>,
+  <a href="https://papers.ssrn.com/sol3/papers.cfm?abstract_id=4428232">SSRN</a>).
+  The results split three ways:</p>
+
+  <div class="pulls">
+    <div class="pull"><div class="n bad">56%</div><div class="d">"antiskilled" — following them produced <strong>-2.3% per month</strong> in abnormal returns</div></div>
+    <div class="pull"><div class="n warn">16%</div><div class="d">unskilled — no measurable value either way</div></div>
+    <div class="pull"><div class="n good">28%</div><div class="d">skilled — +2.6% per month, but you can't tell them apart in advance</div></div>
+  </div>
+
+  <p>The cruel twist: the antiskilled accounts have <strong>more followers</strong> than the
+  skilled ones, because confidence grows an audience faster than accuracy does. Betting
+  <em>against</em> the average influencer was itself a profitable strategy (+1.2% monthly).
+  Even the best graded track record on all of FinTwit runs about
+  <a href="https://www.timesoftrading.com/best/x-accounts-for-traders/">64% call accuracy</a> —
+  wrong one time in three.</p>
+
+  <p>And that's the honest end of the spectrum. Atlas Trading, one of the largest trading
+  communities on Twitter, ended with its founders
+  <a href="https://www.bloomberg.com/news/articles/2022-12-14/why-sec-s-charging-these-twitter-finance-gurus-for-100m-stock-fraud">charged
+  by the SEC over a $100 million pump-and-dump</a> run on their own followers. Across
+  pump-and-dump schemes broadly, retail buyers averaged <strong>-28% per scheme</strong>.</p>
+
+  <div class="verdict red">
+    <p><strong>Rule one, permanently:</strong> no trade is ever taken because a social-media
+    account posted it. Accounts worth <em>reading</em> for context — Peter Brandt, Mark
+    Minervini, Quiver Quantitative — stay in the study pile, not the signal engine.</p>
+  </div>
+
+  <h2>The legal insiders: two public paper trails</h2>
+  <p>U.S. law forces the people with the best information to disclose their trades.
+  Both disclosures are free, public, and legal to follow — this is not insider
+  trading, it's reading insider <em>filings</em>.</p>
+
+  <h3>SEC Form 4 — executives buying their own stock</h3>
+  <p>Officers and directors must report trades in their own company within two business
+  days. Sales mean little (people sell for taxes, houses, divorces); open-market
+  <strong>purchases</strong> mean one thing. The academic record
+  (<a href="https://www.form4api.com/guides/cluster-buy-signals">Cohen, Malloy &amp; Pomorski 2012;
+  Lakonishok &amp; Lee 2001</a>) says the edge is real but narrow:</p>
+
+  <div class="ticket">
+    <div class="row"><span class="k">signal</span><span class="v">opportunistic open-market buys</span></div>
+    <div class="row"><span class="k">strongest form</span><span class="v">3+ insiders within ~2 weeks</span></div>
+    <div class="row"><span class="k">documented edge</span><span class="v good">~82 bps / month abnormal</span></div>
+    <div class="row"><span class="k">routine buys</span><span class="v bad">no edge — filtered out</span></div>
+    <div class="row"><span class="k">data</span><span class="v">OpenInsider · SEC EDGAR</span></div>
+  </div>
+
+  <h3>Congressional disclosures — the STOCK Act trail</h3>
+  <p>Members of Congress must disclose trades within 45 days. Copying those disclosures
+  is now a live, regulated product category:
+  <a href="https://www.quantconnect.com/research/17886/copying-congress-trades/p1">Quiver
+  Quantitative's Congress-Buys strategy</a> reports ~34% CAGR since 2020 versus ~21% for
+  the S&amp;P, and the <a href="https://www.tradingview.com/symbols/NANC">NANC ETF</a> —
+  which simply mirrors one party's disclosed trades — has beaten the S&amp;P 500 by about
+  14 points since early 2023.</p>
+
+  <div class="ticket">
+    <div class="row"><span class="k">signal</span><span class="v">disclosed purchases, 2+ members</span></div>
+    <div class="row"><span class="k">weakness</span><span class="v warn">up to 45-day lag — buy late</span></div>
+    <div class="row"><span class="k">works as</span><span class="v">weeks-to-months holds, not day trades</span></div>
+    <div class="row"><span class="k">data</span><span class="v">Capitol Trades · Quiver Quantitative</span></div>
+  </div>
+
+  <h2>The study pile (education, never signals)</h2>
+  <p>For learning the craft itself, the channels with long tenure, honest loss
+  discussion, and no course-pitch business model:</p>
+  <ul>
+    <li><strong>SMB Capital</strong> — a real proprietary trading firm's playbooks, trade reviews, and risk process. The closest thing to watching professionals work.</li>
+    <li><strong>Rayner Teo</strong> — the clearest beginner foundation: price action and risk management without hype.</li>
+    <li><strong>tastytrade</strong> — probability-based options education from exchange founders.</li>
+    <li><strong>Humbled Trader</strong> — day-trading reality checks for beginners.</li>
+  </ul>
+  <p>Background reading for calibration: studies consistently find
+  <a href="https://beststockstrategy.com/day-trading-technical-analysis-scam/">97%+ of retail
+  day traders lose money over time</a>. That number is why Ralph's scorecard, not our
+  enthusiasm, decides when real dollars move.</p>
+
+  <hr>
+  <p class="sources">
+    Sources: Swiss Finance Institute working paper N°23-30 "Finfluencers" (Kakhbod, Kazempour,
+    Livdan, Schuerhoff) &middot; Cohen, Malloy &amp; Pomorski, "Decoding Inside Information,"
+    Journal of Finance (2012) &middot; Lakonishok &amp; Lee, "Are Insider Trades Informative?",
+    RFS (2001) &middot; SEC v. Atlas Trading (Dec 2022) &middot; QuantConnect, "Copying Congress
+    Trades" &middot; Unusual Whales / NANC ETF performance data &middot; OpenInsider &middot;
+    Capitol Trades.
+  </p>
+</article>
+
+<footer class="foot"><div class="in">
+  <b>Not investment advice.</b> This is two people documenting their own learning process in public.
+  <a href="index.html">Home</a> · <a href="strategy.html">Next: the strategy spec</a>
+</div></footer>
+
+</body>
+</html>

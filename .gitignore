@@ -1,0 +1,10 @@
+# Secrets - never commit
+.env
+Config/.env
+__pycache__/
+*.pyc
+
+# Local runtime state (account-revealing / churns constantly)
+Daily-Logs/orders.jsonl
+Daily-Logs/risk-state.json
+Daily-Logs/autotrader-state.json

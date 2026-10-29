@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Strategy — Trading by Ralph</title>
+<meta name="description" content="Ralph's insider-following strategy spec: rules written before testing, and the gates it must pass before real money.">
+<link rel="stylesheet" href="site.css">
+</head>
+<body>
+
+<div class="rail-strip" role="note" aria-label="Active guardrails">
+  <span>stop-loss <b>required</b></span>
+  <span>risk/trade <b>&le;1%</b></span>
+  <span>daily kill switch <b>-2%</b></span>
+  <span>per order <b>$250 max</b></span>
+  <span>shorting <b>off</b></span>
+  <span>mode <b>paper-first</b></span>
+</div>
+
+<nav class="nav">
+  <span class="wordmark">TRADING BY <em>RALPH</em></span>
+  <a href="terminal.html">Terminal</a>
+  <a href="research.html">Research</a>
+  <a href="strategy.html" aria-current="page">Strategy</a>
+  <a class="gh" href="https://github.com/cdynia/ralph-terminal">GitHub</a>
+</nav>
+
+<article class="page">
+  <p class="kicker">strategy spec &middot; draft &middot; unproven</p>
+  <h1>Insider-following, written down before it's tested</h1>
+  <p class="lede">A strategy only counts if its rules exist before the first trade.
+  This is Ralph's: where the signals come from, exactly when it buys and sells,
+  and the three gates it must pass before a single real dollar is at risk.</p>
+
+  <div class="verdict amber">
+    <p><strong>Status: draft.</strong> Not yet backtested, not yet paper-traded. The
+    performance numbers below are from the academic record, not from Ralph. Until the
+    gates are passed, every claim here is a hypothesis.</p>
+  </div>
+
+  <h2>The thesis</h2>
+  <p>Executives buying their own stock with their own money — especially several of them
+  in the same two weeks — is the best-documented public signal in equities (~82 bps/month
+  abnormal return for opportunistic buys). Congressional purchase disclosures have beaten
+  the index in live products. Both are public record. Ralph trades the paper trail, holds
+  for weeks, and lets the risk engine veto anything oversized.</p>
+
+  <h2>When Ralph buys</h2>
+  <div class="ticket">
+    <div class="row"><span class="k">insider signal</span><span class="v">3+ distinct insiders, open-market buys, within 14 days</span></div>
+    <div class="row"><span class="k">minimum size</span><span class="v">$250k combined &middot; CEO/CFO/President among buyers</span></div>
+    <div class="row"><span class="k">excluded</span><span class="v bad">routine buyers &middot; 10b5-1 planned purchases</span></div>
+    <div class="row"><span class="k">congress signal</span><span class="v">2+ members disclose buys of one ticker in 30 days</span></div>
+    <div class="row"><span class="k">universe</span><span class="v">major US exchanges &middot; &gt;$5 &middot; &gt;500k shares/day</span></div>
+    <div class="row"><span class="k">entry</span><span class="v">limit order next session &middot; never &gt;3% above signal close</span></div>
+  </div>
+
+  <h2>When Ralph sells</h2>
+  <div class="ticket">
+    <div class="row"><span class="k">stop-loss</span><span class="v bad">-8% from entry, always on, server-enforced</span></div>
+    <div class="row"><span class="k">take-profit</span><span class="v good">+20%, or half off at +15% and trail the rest</span></div>
+    <div class="row"><span class="k">time stop</span><span class="v">90 days, out regardless</span></div>
+    <div class="row"><span class="k">signal reversal</span><span class="v">the same insiders start selling &rarr; exit immediately</span></div>
+  </div>
+
+  <h2>The three gates before real money</h2>
+  <p>These run in order, and each one can kill the strategy. That's the point.</p>
+  <ol>
+    <li><strong>Backtest.</strong> Positive expectancy on 3+ years of historical filings,
+    including a down market. Fail &rarr; back to the drawing board, no trades.</li>
+    <li><strong>Paper record.</strong> At least 20 signals or 8 weeks on the simulated
+    account: expectancy positive, max drawdown under 10%. Fail &rarr; revise or retire.</li>
+    <li><strong>Live at minimum size.</strong> $250-per-order caps, both owners sign off.
+    Size grows only as the live scorecard earns it.</li>
+  </ol>
+
+  <h2>What could go wrong (the honest list)</h2>
+  <ul>
+    <li>Congressional disclosures lag up to 45 days — Ralph buys late, and the edge may
+    shrink as copy-trading products crowd in.</li>
+    <li>The insider edge concentrates in smaller companies: wider spreads, gappier stops,
+    worse fills than the studies assume.</li>
+    <li>Recent out-of-sample tests of naive cluster screens show a weakened edge — the
+    strict filters above are the whole game, and they might not be enough.</li>
+    <li>This is a weeks-to-months strategy. It will be boring. Boring is the point.</li>
+  </ul>
+
+  <hr>
+  <p class="sources">Full evidence and sources on the <a href="research.html">research page</a>.
+  Machine-readable spec lives in the repo at <span class="mono">Strategies/insider-following.md</span>.</p>
+</article>
+
+<footer class="foot"><div class="in">
+  <b>Not investment advice.</b> Two people documenting their own learning process in public.
+  <a href="index.html">Home</a> · <a href="terminal.html">Open the terminal</a>
+</div></footer>
+
+</body>
+</html>
